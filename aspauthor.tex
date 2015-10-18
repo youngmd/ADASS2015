@@ -44,6 +44,57 @@ Our test cluster consists of five of the 16 data nodes on the Karst Cluster at I
 
 A Apache Hadoop Distributed File System (HDFS) was installed and configured to utilize 20TB from each node's local storage to construct a distributed and redundant file system with 100TB of available space.  Our Hive and Impala tests utilize HDFS, while the LSD setup uses local storage.  
 
+\section{Single Node Tests}
+
+
+\section{Scalability}
+
+
+\section{Spatial Searches: The power of partitions}
+Each table within a Hive database can have one or more partition keys, which determine how the data are stored on HDFS.  In addition to determining the file structure, the partition keys act as virtual columns, reducing the storage requirements.  By physically splitting the table by the unique entries of a given key, the speed of a given query may be drastically increased if the query utilizes the partition key as limiting selector, thereby reducing the number of rows which must be iterated over to only those contained within the target partition(s).
+
+Astronomical database queries commonly include a spatial limitation, either selecting objects between some minimum and maximum coordinate range (box search), or in some radius around a given point (cone search).  Of these two, the cone search is the most computationally expensive, requiring the use of algorithms such as the Haversine formula to accurately calculate angular distances on the sky.  Various optimizations have been attempted over the years, but the most successful of these has been sky pixelation techniques, including the popular HEALPix and Hierarchical Triangular Mesh (HTM) libraries.  Sky pixelation tessellates the sky into regions and sub-regions, with the size and depth of these tessellations dictated by a scaling parameter.  Objects within a given region then will always be nearby spatially.  To simplify our cone search then, we calculate which sky pixel regions our cone intersects, and use the resulting sky pixel values to select which partitions to search on, instead of iterating over the entire table.
+
+Being familiar with the healpy library, a Python implementation of HEALPix, we chose to construct our partition keys by calulating HEALPix cells for each source position.  In order to determine which scale parameter, or tessellation depth to use in our partitioning scheme we devised a testing procedure.  While there is no theoretical limit to the depth of the tessellation, we have restricted ourselves to relatively large regions as fragmenting a single table into too many partitions would overload the HDFS namenode and reduce performance.  The typical recommendation is to have $<$100 partitions per node, a level we found ourselves at with the HEALPix NSIDE parameter of 32.  NSIDE values are always in powers of 2.  Table \ref{table:partitions} shows how our dataset was partitioned at different NSIDE levels, with each partition level being created in a new table.
+
+\begin{table}[!ht]
+\caption{Partitioning the BDBS dataset with HEALPix}
+\label{table:partitions}
+\smallskip
+\begin{center}
+{\small
+\begin{tabular}{llc}  % l = left, c = centered
+\tableline
+\noalign{\smallskip}
+NSIDE & Partitions & Avg rows per Partition\\
+\noalign{\smallskip}
+\tableline
+\noalign{\smallskip}
+2 & 18 & 20259746 \\
+4 & 37 & 9856092\\
+8 & 57 & 6397814\\
+16 & 100 & 3646754\\
+32 & 214 & 1704090\\
+\noalign{\smallskip}
+\tableline\
+\end{tabular}
+}
+\end{center}
+\end{table}
+
+
+Keeping in mind that our goal was to allow efficient querying of our database across a range of search radii, we resolved to test the how different partitions levels performed across a wide parameter space.  We selected random positions within our dataset, to reduce the effect of a single position lying near a vertex at a particular tessellation level.  We also varied the search radius, from 0.1 - 2 degrees.  At each position and radius we checked the performance against all the partition levels, and scaled the runtime to that of the unpartitioned control table.  Finally, we average the scaled runtimes across all positions for a given search radius and tessellation level.   We utilized the Tez engine for this test, with mapping and reduce vectorization enabled, and the data were stored in the ORCFile format, which offers the best performance for the Tez engine.  The results of this test can been in Figure \ref{fig:conesearch}, with scaled runtimes plotted against partition levels, with the different colored lines representing search radii.  
+
+\articlefigure{P121_f2.eps}{fig:conesearch}{Testing}
+
+
+Even at the lowest level of NSIDE=2 we see a significant increase in performance, and at our highest partition level (NSIDE=32) we see runtimes on average taking less than 25\% of the unpartitioned runtime.  The performance curve flattens out significantly at the higher levels, indicating that we are running into the limits imposed by the Hive/Tez overhead for our setup. 
+
+\section{Conclusion and Future Work}
+
+We have successfully demonstrated that solutions developed for Big Data concerns in the commercial sector can be applied to the question of astronomy data management and provide good performance out of the box.  With the ability to scale these solutions to arbitrarily large datasets on commodity hardware, the need for Astronomy data scientists to develop custom solutions to looming Big Data concerns is greatly reduced.
+
+Finally, we note the existence of several relatively new technologies within the SQL-on-Hadoop space, including Impala and SparkSQL, intended to enable real-time interactive querying, as opposed to the batch-submission approach of Hive.  Implementing and testing these cutting-edge solutions is beyond the immediate scope and requirements of our the BDBS dataset, but neither the promise of these efforts nor the rapid timescale on which they have been developed should be ignored, and bode well for future efforts within this problem space.  
 
 \acknowledgements The ASP would like to the thank the dedicated researchers who are publishing with the ASP.  Keep this text on the same line as the \verb"\acknowledgements" command because it makes things a lot easier.
 
