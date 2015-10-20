@@ -46,10 +46,6 @@ A Apache Hadoop\footnote{\url{https://hadoop.apache.org/}} Distributed File Syst
 
 Our test dataset consists of ~365 million point sources with positions and calibrated $ugrizY$ magnitudes and errors, totaling ~60GB on disk.  This represents a significant fraction of the eventual full BDBS dataset, which we anticipate will total over $10^9$ sources when complete.
 
-\section{Single Node Tests}
-We begin with tests on a single node, configuring Hadoop and Hive in a "pseudo-cluster" mode to allow it to operate in this restricted environment.  We also test the performance of our dataset in MySQL, a popular database solution.  We also test the performance of the Large Survey Database (LSD), an astronomy-specific extension of MapReduce with spatial and temporal table partitioning and extensive support for cross-table matching.  LSD will eventually support cluster operation, but in its current release is restricted to a single node.  For Hive we test 2 different execution engines: the older MapReduce, and the newly developed Tez, an outgrowth of the Apache Stinger Initiative.  
-
-***Single node test figure here***
 
 \section{Spatial Searches: The power of partitions}
 \label{spatial}
