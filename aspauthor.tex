@@ -16,7 +16,7 @@
 
 \bibliographystyle{asp2014}
 
-\markboth{Michael Young and Scott Micheal}{BDBS Big Data Challenges}
+\markboth{Michael Young and Scott Michael}{BDBS Big Data Challenges}
 
 \begin{document}
 
@@ -29,25 +29,58 @@
 
 % This section is for ADS Processing.  There must be one line per author.
 \paperauthor{Michael Young}{youngmd@iu.edu}{}{Indiana University}{Research Technologies}{Bloomington}{IN}{47401}{USA}
-\paperauthor{Sample~Author2}{Author2Email@email.edu}{}{Indiana University}{Research Technologies}{Bloomington}{IN}{47401}{USA}
+\paperauthor{Scott Michael}{scamicha@iu.edu}{}{Indiana University}{Research Technologies}{Bloomington}{IN}{47401}{USA}
 
 \begin{abstract}
-As part of a multi-year effort to survey 200 square degrees of the Southern Milky Way Bulge in SDSS \textit{ugrizY} utilizing the Dark Energy Camera (DECam) on the Blanco 4m telescope, the Blanco DECam Bulge Survey (BDBS) has taken >350k source frames.  Utilizing a distributed architecture executing dophot, we have extracted ~15 billion source detections from these frames.  With one of the primary goals of the survey being the creation of a catalog as a community resource, we have explored a number of ways to facilitate the querying and dissemination of this dataset.  Given the wide and deep nature of the data, a traditional RDBMS is unsuitable for all but the simplest of queries.  Here we will present our efforts to leverage the open-source Apache Hadoop/HDFS/Hive stack, a widely recognized industry-standard approach to Big Data problems.  Running on relatively inexpensive hardware, we will demonstrate how solutions designed for the commercial web have already addressed many of the concerns facing scientists in the Big Data future.
+As part of a multi-year effort to survey 200 square degrees of the Southern Milky Way Bulge in SDSS
+\textit{ugrizY} utilizing the Dark Energy Camera (DECam) on the Blanco 4m telescope, the Blanco DECam Bulge
+Survey (BDBS) has taken >350k source frames. Utilizing a distributed architecture executing dophot, we have
+extracted ~15 billion source detections from these frames. With one of the primary goals of the survey being
+the creation of a catalog as a community resource, we have explored a number of ways to facilitate the
+querying and dissemination of this dataset. Given the wide and deep nature of the data, a traditional RDBMS
+presents challenges for all but the simplest of queries. Here we will present our efforts to leverage the
+open-source Apache Hadoop/HDFS/Hive stack, a widely recognized industry-standard approach to Big Data
+problems. Running on relatively inexpensive hardware, we will demonstrate how solutions designed for the
+commercial web have already addressed many of the concerns facing scientists in a future dominated by Big Data.
 \end{abstract}
 
 \section{Introduction}
-Over the past few years there has been a large amount of time and money allocated in the private sector to address the problems and opportunities presented by the ongoing collection of massive amounts of data, commonly known as Big Data.  
 
-\section{Test Setup}
+The Blanco DECam Bulge Survey (BDBS) is a survey designed to cover a 200 square degree area of the Milky Way
+Bulge in several filters (\textit{ugrizY}) and multiple epochs using the Dark Energy Camera. After conducting
+basic processing including flat fielding, zero point photometic corrections, and WCS corrections we extracted
+sources from the image frames. Using dophot across a distributed compute architecture we were able to extract
+over 15 billion sources with positions and corrected magnitudes. After matching detections across filters and
+epochs we produced a data set with approximately 365 million unique sources. With this many sources we
+believed a traditional RDBMS would not provide the necessary performance to give reasonable query return
+times, to address this issue we decided to explore several of the tool sets used in the Big Data application space.
 
-Our test cluster consists of five of the 16 data nodes on the Karst Cluster at IU, which also contains 256 compute nodes not used in our tests.  The data nodes each have 2 Intel Xeon E5-2650 v2 8-core processors, for 16 cores per node and 80 cores in total.  Each node has 64GB of RAM and 24TB of local storage.  
+Over the past few years there has been a large amount of time and money allocated in the private sector to
+address the problems and opportunities presented by the ongoing collection of massive amounts of data,
+commonly known as Big Data. One of the more widely used family of products is the open source implementation
+of Google's MapReduce produced by Apache called Hadoop\cite{ref:hadoop}. Hadoop uses an underlying file system called the
+Hadoop Distributed File System (HDFS) which is based on the Google File System (GFS). There are a variety of
+software products that have sprung up around the Apache Hadoop technology, this ecosystem is sometimes
+referred to as the Hadoop zoo and includes applications such as Hive, Hbase, Pig, Impala, Tez, and others. Of
+particular interest for this work beyond the basic Hadoop and HDFS implementation are Hive and Tez.
 
-A Apache Hadoop\footnote{\url{https://hadoop.apache.org/}} Distributed File System (HDFS) was installed and configured to utilize 20TB from each node's local storage to construct a distributed and redundant file system with 100TB of available space.  Our Hive tests utilize HDFS, while the LSD and MySQL applications use local storage.  
+The Hadoop MapReduce framework works by divding workloads into many parallel jobs. A MapReduce job takes an
+input data set and divides it into independent chunks which are then processed by the map tasks in a parallel
+fashion. The output of the map tasks are then sorted by framework and 
 
-Our test dataset consists of ~365 million point sources with positions and calibrated $ugrizY$ magnitudes and errors, totaling ~60GB on disk.  This represents a significant fraction of the eventual full BDBS dataset, which we anticipate will total over $10^9$ sources when complete.
+
+
+\section{Methodology}
+
+\subsection{Hardware and Software Configuration}
+
+Our test cluster consists of five of the 16 nodes on the Karst Cluster at IU, which each have dual Xeon
+E5-2650 v2 8-core processors. Each node has 64GB of RAM and 24TB of local storage. An Apache HDFS was installed and configured to utilize 20TB from each node's local storage to construct a distributed and redundant file system with 100TB of available space.  Our Hive tests utilize HDFS, while the MySQL application uses local storage.  
+
+Our test dataset consists of $\sim$365 million point sources with positions and calibrated $ugrizY$ magnitudes and errors, totaling $\sim$60GB on disk.  This represents a significant fraction of the eventual full BDBS dataset, which we anticipate will total over $10^9$ sources when complete.
 
 \section{Single Node Tests}
-We begin with tests on a single node, configuring Hadoop and Hive in a "pseudo-cluster" mode to allow it to operate in this restricted environment.  We also test the performance of our dataset in MySQL, a popular database solution.  We also test the performance of the Large Survey Database (LSD), an astronomy-specific extension of MapReduce with spatial and temporal table partitioning and extensive support for cross-table matching.  LSD will eventually support cluster operation, but in its current release is restricted to a single node.  For Hive we test 2 different execution engines: the older MapReduce, and the newly developed Tez, an outgrowth of the Apache Stinger Initiative.  
+We began with tests on a single node, configuring Hadoop and Hive in a "pseudo-cluster" mode to allow it to operate in this restricted environment.  We also tested the performance of our dataset in MySQL, a popular database solution.  For Hive we tested 2 different execution engines: the older MapReduce, and Apache Tez.  
 
 ***Single node test figure here***
 
