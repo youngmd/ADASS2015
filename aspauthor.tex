@@ -10,6 +10,7 @@
 
 \documentclass[11pt,twoside]{article}
 \usepackage{./asp2014}
+\usepackage[compact]{titlesec}
 
 \aspSuppressVolSlug
 \resetcounters
@@ -19,6 +20,7 @@
 \markboth{Michael Young and Scott Michael}{BDBS Big Data Challenges}
 
 \begin{document}
+%\setlength{\textfloatsep}{-5pt}
 
 \title{Big Data Challenges in the Blanco DECam Bulge Survey}
 \author{Michael Young$^1$ and Scott Michael$^2$
@@ -32,99 +34,64 @@
 \paperauthor{Scott Michael}{scamicha@iu.edu}{}{Indiana University}{Research Technologies}{Bloomington}{IN}{47401}{USA}
 
 \begin{abstract}
-As part of a multi-year effort to survey 200 square degrees of the Southern Milky Way Bulge in SDSS
-\textit{ugrizY} utilizing the Dark Energy Camera (DECam) on the Blanco 4m telescope, the Blanco DECam Bulge
-Survey (BDBS) has taken >350k source frames. Utilizing a distributed architecture executing dophot, we have
-extracted ~15 billion source detections from these frames. With one of the primary goals of the survey being
-the creation of a catalog as a community resource, we have explored a number of ways to facilitate the
-querying and dissemination of this dataset. Given the wide and deep nature of the data, a traditional RDBMS
-presents challenges for all but the simplest of queries. Here we will present our efforts to leverage the
-open-source Apache Hadoop/HDFS/Hive stack, a widely recognized industry-standard approach to Big Data
-problems. Running on relatively inexpensive hardware, we will demonstrate how solutions designed for the
-commercial web have already addressed many of the concerns facing scientists in a future dominated by Big Data.
+  As part of a multi-year effort to survey 200 square degrees of the Southern Milky Way Bulge in SDSS
+  \textit{ugrizY} utilizing the Dark Energy Camera (DECam) on the Blanco 4m telescope, the Blanco DECam Bulge
+  Survey (BDBS) has taken >350k source frames. Utilizing a distributed architecture executing dophot, we have
+  extracted $\sim$15 billion source detections from these frames. With one of the primary goals of the survey
+  being the creation of a catalog as a community resource, we have explored a number of ways to facilitate the
+  querying and dissemination of this dataset. Here we present initial efforts with the open-source Hadoop
+  ecosystem, a widely utilized approach to Big Data problems. Running on commodity hardware, we will
+  demonstrate how out of the box solutions have addressed many of the concerns facing scientists in a future
+  dominated by Big Data.
 \end{abstract}
 
 \section{Introduction}
-
 The Blanco DECam Bulge Survey (BDBS) is a survey designed to cover a 200 square degree area of the Milky Way
-Bulge in several filters (\textit{ugrizY}) and multiple epochs using the Dark Energy Camera. After conducting
-basic processing including flat fielding, zero point photometic corrections, and WCS corrections we extracted
-sources from the image frames. Using dophot across a distributed compute architecture we were able to extract
-over 15 billion sources with positions and corrected magnitudes. After matching detections across filters and
-epochs we produced a data set with approximately 365 million unique sources. With this many sources we
-believed a traditional RDBMS would not provide the necessary performance to give reasonable query return
-times, to address this issue we decided to explore several of the tool sets used in the Big Data application space.
+Bulge in several filters and multiple epochs. After conducting basic processing including flat fielding, zero
+point photometic corrections, and WCS corrections we extracted sources from the image frames. Using dophot
+across a distributed compute architecture we were able to extract over 15 billion sources with positions and
+corrected magnitudes. After matching detections across filters and epochs we produced a data set with
+approximately 365 million unique sources. With this many sources we believed a traditional RDBMS would not
+provide the necessary performance to give reasonable query return times, to address this issue we decided to
+explore several of the tool sets used in the Big Data application space.
 
-Over the past few years there has been a large amount of time and money allocated in the private sector to
-address the problems and opportunities presented by the ongoing collection of massive amounts of data,
-commonly known as Big Data. One of the more widely used family of products is the open source implementation
-of Google's MapReduce produced by Apache called Hadoop\cite{ref:hadoop}. Hadoop uses an underlying file system called the
-Hadoop Distributed File System (HDFS) which is based on the Google File System (GFS). There are a variety of
-software products that have sprung up around the Apache Hadoop technology, this ecosystem is sometimes
-referred to as the Hadoop zoo and includes applications such as Hive, Hbase, Pig, Impala, Tez, and others. Of
-particular interest for this work beyond the basic Hadoop and HDFS implementation are Hive and Tez.
+One of the more widely used family of products to address Big Data challenges is the open source
+implementation of Google's MapReduce produced by Apache called
+Hadoop\footnote{\url{https://hadoop.apache.org/}}. Hadoop uses an underlying file system called the Hadoop
+Distributed File System (HDFS) which is based on the Google File System (GFS). There are a variety of software
+products that have sprung up around the Apache Hadoop technology, including applications such as Hive, Hbase,
+Pig, Impala, Tez, and others. Of particular interest for this work beyond the basic Hadoop and HDFS
+implementation are Hive and Tez.
 
-The Hadoop MapReduce framework works by divding workloads into many parallel jobs. A MapReduce job takes an
-input data set and divides it into independent chunks which are then processed by the map tasks in a parallel
+The Hadoop MapReduce framework divides workloads into many parallel jobs, these MapReduce jobs take a input
+data set and divides it into independent chunks, which are then processed by map tasks in a parallel
 fashion. The output of the map tasks are then sorted by framework based on key value pairs, shuffled to the
 appropriate nodes for the reduce tasks, and then provided as input to the reduce tasks. The map and reduce
 tasks are managed by a master node running a JobTracker process and slave nodes running TaskTracker processes.
+The HDFS file system is the underlying data storage system of nearly all Hadoop related applications. HDFS is
+a distributed file system that uses commodity hardware to achieve high throughput and fault tolerance. This is
+accomplished by data being divided into chunks, replicated and spread throughout a cluster. The
+default replication factor for HDFS is three copies, and data locations are tracked via a master NameNode
+and slave DataNodes.
 
-Both Hadoop and Hive are typically deployed on an HDFS filesystem. HDFS is a distributed file system that uses
-commodity hardware to achieve high throughput and fault tolerance. This is largely accomplished by data being
-divided into chunks, replicated and spread throughout a cluster. The default replication factor for HDFS is
-three copies, and data locations are tracked via a master NameNode which has many slave DataNodes. 
-
-Both Hive and Tez are execution engines that can interoperate with the Hadoop MapReduce framework. Hive
-provides a framework that leverages Hadoop and HDFS to provide data warehouse functionalities such as querying
-and storing very large data sets. Hive uses an SQL like querying language which, by default, translates
-queries into Hadoop MapReduce jobs. Tez is an alternative execution engine for executing queries, but more
-generally can handle full directed acyclic graphs, not just map and reduce functions. Many of the capabilities
-in Tez are also present in Apache Spark. In general, the Tez execution engine is faster than the standard
-Hadoop backend for Hive. 
+Hive and Tez are execution engines that can interoperate with the Hadoop MapReduce framework. Hive provides a
+framework that leverages Hadoop and HDFS to provide data warehouse functionalities such as querying and
+storing very large data sets. Hive uses an SQL like querying language which, by default, translates queries
+into Hadoop MapReduce jobs. Tez is an alternative execution engine for executing queries, but more generally
+can handle full directed acyclic graphs, not just map and reduce functions. In general, the Tez execution
+engine is faster than the standard Hadoop backend for Hive.
 
 \section{Hardware and Software Configuration}
+Our test cluster consists of five nodes on the Karst Cluster at IU, which each have dual Xeon E5-2650 v2
+8-core processors. Each node has 64GB of RAM and 24TB of local storage. An HDFS was installed and configured
+to utilize 20TB from each node's local storage to construct a distributed and redundant file system with 100TB
+of available space. Unless otherwise noted, default settings and configurations were used for Hadoop, HDFS,
+Hive, and Tez. Our Hive tests utilize HDFS, while the MySQL application uses local storage.  Our test dataset
+consists of $\sim$365 million point sources with positions and calibrated $ugrizY$ magnitudes and errors,
+totaling $\sim$60GB on disk.  This represents a significant fraction of the eventual full BDBS dataset, which
+we anticipate will total over $10^9$ sources when complete.
 
-Our test cluster consists of five of the 16 nodes on the Karst Cluster at IU, which each have dual Xeon
-E5-2650 v2 8-core processors. Each node has 64GB of RAM and 24TB of local storage. An Apache HDFS was
-installed and configured to utilize 20TB from each node's local storage to construct a distributed and
-redundant file system with 100TB of available space.  Our Hive tests utilize HDFS, while the MySQL application
-uses local storage.
-
-Our test dataset consists of $\sim$365 million point sources with positions and calibrated $ugrizY$ magnitudes
-and errors, totaling $\sim$60GB on disk.  This represents a significant fraction of the eventual full BDBS
-dataset, which we anticipate will total over $10^9$ sources when complete.
-
-% \section{Single Node Tests}
-% We began with tests on a single node, configuring Hadoop and Hive in a "pseudo-cluster" mode to allow it to
-% operate in this restricted environment.  We also tested the performance of our dataset in MySQL, a popular
-% database solution.  For Hive we tested 2 different execution engines: the older MapReduce, and Apache Tez.
-
-% ***Single node test figure here***
-
-\section{Spatial Searches: The power of partitions}
-\label{spatial}
-Each table within a Hive database can have one or more partition keys, which determine how the data are stored
-on HDFS.  In addition to determining the file structure, the partition keys act as virtual columns, reducing
-the storage requirements.  By physically splitting the table by the unique entries of a given key, the speed
-of a given query may be drastically increased if the query utilizes the partition key as limiting selector,
-thereby reducing the number of rows which must be iterated over to only those contained within the target
-partition(s).
-
-Astronomical database queries commonly include a spatial limitation, either selecting objects between some
-minimum and maximum coordinate range (box search), or in some radius around a given point (cone search).  Of
-these two, the cone search is the most computationally expensive, requiring the use of algorithms such as the
-Haversine formula to accurately calculate angular distances on the sky.  Various optimizations have been
-attempted over the years, but the most successful of these has been sky pixelation techniques, including the
-HEALPix \cite{ref:healpix} and Hierarchical Triangular Mesh (HTM) \cite{ref:htm} libraries.  Sky pixelation
-tessellates the sky into regions and sub-regions, with the size and depth of these tessellations dictated by a
-scaling parameter.  To simplify our cone search we calculate which sky pixel regions our cone intersects, and
-use the resulting sky pixel values to select which partitions to search on, avoiding a full table scan.
-
-We chose to construct our partition keys by calulating HEALPix cells for each source position using the healpy \cite{ref:healpy} library, a Python implementation of HEALPix. To determine which scale parameter, or tessellation depth to use in our partitioning scheme we devised a testing procedure.  While there is no theoretical limit to the depth of the tessellation, we have restricted ourselves to relatively large regions as fragmenting a single table into too many partitions would overload the HDFS namenode and reduce performance.  The typical recommendation is to have $<$100 partitions per node, a level we found ourselves at with the HEALPix NSIDE parameter of 32.  NSIDE values are always in powers of 2.  Table \ref{table:partitions} shows how our dataset was partitioned at different NSIDE levels, with each partition level being created in a new table.
-
-\begin{table}[!ht]
-\caption{Partitioning the BDBS dataset with HEALPix}
+\begin{table}[!t]
 \label{table:partitions}
 \smallskip
 \begin{center}
@@ -146,31 +113,62 @@ NSIDE & Partitions & Avg rows per Partition\\
 \end{tabular}
 }
 \end{center}
+\caption{Partitioning the BDBS dataset with HEALPix}
 \end{table}
+% \section{Single Node Tests}
+% We began with tests on a single node, configuring Hadoop and Hive in a "pseudo-cluster" mode to allow it to
+% operate in this restricted environment.  We also tested the performance of our dataset in MySQL, a popular
+% database solution.  For Hive we tested 2 different execution engines: the older MapReduce, and Apache Tez.
+% ***Single node test figure here***
 
-Keeping in mind that our goal was to allow efficient querying of our database across a range of search radii,
-we resolved to test the how different partitions levels performed across a wide parameter space.  We selected
-random positions within our dataset, to reduce the effect of a single position lying near a vertex at a
-particular tessellation level.  We also varied the search radius, from 0.1 - 2 degrees.  At each position and
-radius we checked the performance against all the partition levels, and scaled the runtime to that of the
-unpartitioned control table.  Finally, we average the scaled runtimes across all positions for a given search
-radius and tessellation level.  We utilized the Tez engine for this test, with mapping and reduce
-vectorization enabled, and the data were stored in the ORCFile format, which offers the best performance for
-the Tez engine.  The results of this test can been in Figure \ref{fig:conesearch}, with scaled runtimes
-plotted against partition levels, with the different colored lines representing search radii.
+\section{Spatial Searches: Partitioning and Scalability}
+\label{spatial}
+Each table within a Hive database can have one or more partition keys, which determine how the data are stored
+on HDFS.  In addition to determining the file structure, the partition keys act as virtual columns, reducing
+the storage requirements.  By physically splitting the table by the unique entries of a given key, the speed
+of a given query may be drastically increased if the query utilizes the partition key as limiting selector,
+thereby reducing the number of rows which must be iterated over to only those contained within the target
+partition(s).
 
-\articlefigure{P121_f2.eps}{fig:conesearch}{Search times vs partition depth.  Search times are scaled to the
+\articlefigure[scale=0.5]{P121_f2.eps}{fig:conesearch}{Search times vs partition depth.  Search times are scaled to the
   no-partition control.  HEALPix NSIDE values of 2, 4, 8, 16, and 32 were tested.  Random positions across the
   entire dataset were sampled, and search radii varied from 0.1 to 2.0 degrees. Typical searches returned
   $10^6$ sources.}
 
-Even at the lowest level of NSIDE=2 we see a significant increase in performance, and at our highest partition
+Astronomical database queries commonly include a spatial limitation, either selecting objects between some
+minimum and maximum coordinate range (box search), or in some radius around a given point (cone
+search). Various optimization techniques have been developed over the years, with the most successful of these
+being sky pixelation techniques, including the HEALPix\footnote{\url{http://healpix.sf.net/}} and Hierarchical
+Triangular Mesh (HTM) libraries. Sky pixelation tessellates the sky into regions and sub-regions, with the
+size and depth of these tessellations dictated by a scaling parameter. To simplify our cone search we
+calculate which sky pixel regions our cone intersects, and use the resulting sky pixel values to select which
+partitions to search on, avoiding a full table scan.
+
+We chose to construct our partition keys by calulating HEALPix cells for each source position using the healpy
+library, a Python implementation of HEALPix. To determine which scale parameter, or tessellation depth to use
+in our partitioning scheme we devised a testing procedure.  While there is no theoretical limit to the depth
+of the tessellation, we have restricted ourselves to relatively large regions, as fragmenting a single table
+into too many partitions would overload the HDFS NameNode and reduce performance. The typical recommendation
+is to have $<$100 partitions per node, a level we obtained with the HEALPix NSIDE parameter of 32. Table
+\ref{table:partitions} shows how our dataset was partitioned at different NSIDE levels, with each partition
+level being created in a new table.
+
+As our goal was to allow efficient querying of our database across a range of search radii, we resolved to
+test the how different partitions levels performed across a wide parameter space.  We selected random
+positions within our dataset, to reduce the effect of a single position lying near a vertex at a particular
+tessellation level. We also varied the search radius, from 0.1 - 2 degrees. At each position and radius we
+checked the performance against all the partition levels, and scaled the runtime to that of the unpartitioned
+control table.  Finally, we average the scaled runtimes across all positions for a given search radius and
+tessellation level.  We utilized the Tez engine for this test, with mapping and reduce vectorization enabled,
+and the data were stored in the ORCFile format, which offers the best performance for the Tez engine. Figure
+\ref{fig:conesearch} shows scaled runtimes plotted against partition levels, with the different colored lines
+representing search radii. Even at the lowest level of NSIDE=2 we see a significant increase in performance, and at our highest partition
 level (NSIDE=32) we see runtimes on average taking less than 25\% of the unpartitioned runtime.  The
 performance curve flattens out significantly at the higher levels, indicating that we are running into the
-limits imposed by the Hive/Tez overhead for our setup.
+limits imposed by the Hive overhead for our setup.
 
+\articlefigure[scale=0.75]{P121_f3.eps}{fig:scaling}{Runtimes vs number of nodes in the cluster.}
 
-\section{Scalability}
 With the largest Hadoop clusters in the world containing several thousand nodes, the question of the
 scalability of Hadoop has been answered. However, scalability is often determined by the input data set and
 analysis workflow. The purpose of this test is to find out how adding additional nodes to our small cluster
@@ -180,29 +178,25 @@ note that the flexibility of Hadoop allows us to add nodes to the cluster withou
 ran two types of queries in our test: a partition restricted cone search as in Section \ref{spatial}, and a
 whole table color calculation and sort.
 
-\articlefigure{P121_f3.eps}{fig:scaling}{Runtimes vs number of nodes in the cluster.}
-
 \section{Conclusion and Future Work}
 
 We have successfully demonstrated that solutions developed for Big Data concerns in the commercial sector can
-be applied to the question of astronomy data management and provide good performance out of the box.  We have
-demonstrated how we can scale seamlessly to handle large datasets on commodity hardware.  The need for data
-scientists to develop custom solutions from scratch to looming Big Data concerns in the field of astronomy is
-no longer clear.  We have also shown that with intelligent data partitioning, both spatially and temporally,
-one can realize a significant positive impact on query runtimes.
+be applied to the question of astronomy data management and provide good performance out of the box. The
+Hive/Tez solution we have deployed compares quite favorably to a traditional RBDMS. For example, simple single
+node MySQL queries took minutes to complete and complex queries had not completed after several hours.  We
+have also shown that with intelligent data partitioning, both spatially and temporally, one can realize a
+significant positive impact on query runtimes.
 
-We note the existence of several relatively new technologies within the SQL-on-Hadoop space, including Impala
-and SparkSQL, both intended to enable real-time interactive querying, as opposed to the batch-submission
-approach of Hive.  Implementing and testing these cutting-edge solutions is beyond the immediate scope and
-requirements of the BDBS project, but neither the promise of these efforts nor the rapid timescale on which
-they have been developed should be ignored, and bode well for future efforts within this problem space.
+There are several new technologies which bear investigation beyond Hive and Tez, including Impala and
+SparkSQL, both intended to enable real-time interactive querying, as opposed to the batch-submission approach
+of Hive.  Implementing and testing these cutting-edge solutions is beyond the immediate scope and requirements
+of the BDBS project, but neither the promise of these efforts nor the rapid timescale on which they have been
+developed should be ignored, and bode well for future efforts within this problem space.
 
 \acknowledgements We'd like to thank our collaborators on the BDBS project, especially Michael Rich, Will
-Clarkson, and Christian Johnson.  We'd also like to thank the High Performance Servers team within the
-Research Technology group at Indiana University, for providing the hardware and support for our testing
-setup. Some of the results in this paper have been derived using the HEALPix (Górski et al., 2005) package".
+Clarkson, and Christian Johnson. Some of the results in this paper have been derived using the HEALPix (Górski et al., 2005) package.
 
-%\bibliography{editor}  % For BibTex
+%\bibliography{aspauthor}  % For BibTex
 
 % For non-BibTex:
 %\begin{thebibliography}
