@@ -61,9 +61,7 @@ Hadoop\footnote{\url{https://hadoop.apache.org/}}. Hadoop uses an underlying fil
 Distributed File System (HDFS) which is based on the Google File System (GFS). There are a variety of software
 products that have sprung up around the Apache Hadoop technology, including applications such as Hive, Hbase,
 Pig, Impala, Tez, and others. Of particular interest for this work beyond the basic Hadoop and HDFS
-implementation are Hive and Tez.
-
-The Hadoop MapReduce framework divides workloads into many parallel jobs, these MapReduce jobs take a input
+implementation are Hive and Tez. The Hadoop MapReduce framework divides workloads into many parallel jobs, these MapReduce jobs take a input
 data set and divides it into independent chunks, which are then processed by map tasks in a parallel
 fashion. The output of the map tasks are then sorted by framework based on key value pairs, shuffled to the
 appropriate nodes for the reduce tasks, and then provided as input to the reduce tasks. The map and reduce
@@ -145,15 +143,12 @@ calculate which sky pixel regions our cone intersects, and use the resulting sky
 partitions to search on, avoiding a full table scan.
 
 We chose to construct our partition keys by calulating HEALPix cells for each source position using the healpy
-library, a Python implementation of HEALPix. To determine which scale parameter, or tessellation depth to use
-in our partitioning scheme we devised a testing procedure.  While there is no theoretical limit to the depth
-of the tessellation, we have restricted ourselves to relatively large regions, as fragmenting a single table
-into too many partitions would overload the HDFS NameNode and reduce performance. The typical recommendation
+library, a Python implementation of HEALPix. We devised a test to determine which scale parameter was best suited for our data.  While there is no theoretical limit to the depth of the tessellation, we have restricted ourselves to relatively large regions, as fragmenting a single table
+into too many partitions could bottleneck the HDFS NameNode. The typical recommendation
 is to have $<$100 partitions per node, a level we obtained with the HEALPix NSIDE parameter of 32. Table
-\ref{table:partitions} shows how our dataset was partitioned at different NSIDE levels, with each partition
-level being created in a new table.
+\ref{table:partitions} shows the effect of different partition levels on our data.
 
-As our goal was to allow efficient querying of our database across a range of search radii, we resolved to
+We resolved to
 test the how different partitions levels performed across a wide parameter space.  We selected random
 positions within our dataset, to reduce the effect of a single position lying near a vertex at a particular
 tessellation level. We also varied the search radius, from 0.1 - 2 degrees. At each position and radius we
@@ -167,16 +162,15 @@ level (NSIDE=32) we see runtimes on average taking less than 25\% of the unparti
 performance curve flattens out significantly at the higher levels, indicating that we are running into the
 limits imposed by the Hive overhead for our setup.
 
-\articlefigure[scale=0.75]{P121_f3.eps}{fig:scaling}{Runtimes vs number of nodes in the cluster.}
+\articlefigure[scale=0.5]{P121_f3.eps}{fig:scaling}{Runtimes vs number of nodes in the cluster.  The cone search found all objects within 2 degrees of a random point, while the sort calculated g-r for the entire dataset and sorted all rows by their g-r values.}
 
 With the largest Hadoop clusters in the world containing several thousand nodes, the question of the
 scalability of Hadoop has been answered. However, scalability is often determined by the input data set and
 analysis workflow. The purpose of this test is to find out how adding additional nodes to our small cluster
 improves performance for our particular dataset.  To accomplish this we created the cluster initially with a
 single node, ran our tests, then added additional nodes, re-running the same queries as we went along.  We
-note that the flexibility of Hadoop allows us to add nodes to the cluster without restarting any services.  We
-ran two types of queries in our test: a partition restricted cone search as in Section \ref{spatial}, and a
-whole table color calculation and sort.
+ran two types of queries in our test: a partition restricted cone search as in Figure  \ref{fig:conesearch}, and a
+whole table color calculation and sort.  The results of this test are shown in Figure \ref{fig:scaling}.
 
 \section{Conclusion and Future Work}
 
@@ -185,9 +179,7 @@ be applied to the question of astronomy data management and provide good perform
 Hive/Tez solution we have deployed compares quite favorably to a traditional RBDMS. For example, simple single
 node MySQL queries took minutes to complete and complex queries had not completed after several hours.  We
 have also shown that with intelligent data partitioning, both spatially and temporally, one can realize a
-significant positive impact on query runtimes.
-
-There are several new technologies which bear investigation beyond Hive and Tez, including Impala and
+significant positive impact on query runtimes. There are several new technologies which bear investigation beyond Hive and Tez, including Impala and
 SparkSQL, both intended to enable real-time interactive querying, as opposed to the batch-submission approach
 of Hive.  Implementing and testing these cutting-edge solutions is beyond the immediate scope and requirements
 of the BDBS project, but neither the promise of these efforts nor the rapid timescale on which they have been
